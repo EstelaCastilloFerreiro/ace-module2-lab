@@ -101,15 +101,24 @@ router.post('/', (req: Request<Record<string, unknown>, Record<string, unknown>,
       }
 
       if (req.body.layout) {
-        const filePath: string = path.resolve(req.body.layout).toLowerCase()
-        const isForbiddenFile: boolean = (filePath.includes('ftp') || filePath.includes('ctf.key') || filePath.includes('encryptionkeys'))
+        const allowedDirectory: string = path.resolve('views')
+        let resolvedPath: string = typeof req.body.layout === 'string' ? path.resolve(req.body.layout) : ''
+        if (!resolvedPath.startsWith(allowedDirectory + path.sep)) {
+          resolvedPath = typeof req.body.layout === 'string' ? path.resolve(allowedDirectory, req.body.layout) : ''
+        }
+        const filePath: string = resolvedPath.toLowerCase()
+        const isForbiddenFile: boolean = !resolvedPath.startsWith(allowedDirectory + path.sep) ||
+          (filePath.includes('.') && !filePath.endsWith('.hbs')) ||
+          filePath.includes('ftp') ||
+          filePath.includes('ctf.key') ||
+          filePath.includes('encryptionkeys')
         if (!isForbiddenFile) {
           res.render('dataErasureResult', {
             ...req.body,
             ...themeVars
           }, (error, html) => {
             if (!html || error) {
-              next(new Error(error.message))
+              next(new Error(error?.message ?? 'Render failed'))
             } else {
               const sendlfrResponse: string = html.slice(0, 100) + '......'
               res.send(sendlfrResponse)
